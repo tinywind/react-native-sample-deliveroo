@@ -1,0 +1,10 @@
+{
+  "extends": "@tsconfig/react-native/tsconfig.json",
+  "display": "Expo",
+  "compilerOptions": {
+    "lib": ["es2019", "DOM", "ESNext"],
+    "paths": {
+      "@/*": ["./"]
+    }
+  }
+}
