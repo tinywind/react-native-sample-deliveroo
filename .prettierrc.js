@@ -1,4 +1,5 @@
 module.exports = {
+  plugins: ['prettier-plugin-nativewind'],
   endOfLine: 'auto',
   singleQuote: true,
   jsxSingleQuote: true,
