@@ -68,3 +68,5 @@ package-lock.json
 
 __tests__/__snapshots__/
 google-services.json
+
+.env
