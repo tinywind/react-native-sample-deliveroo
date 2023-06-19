@@ -30,7 +30,9 @@ export default {
     },
     plugins: [],
     extra: {
-      eas: {},
+      eas: {
+        projectId: '84cf5fb7-7700-43fa-be8a-6ace050c3202',
+      },
     },
     owner: 'tinywind',
   },
