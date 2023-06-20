@@ -1,17 +1,18 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NavigationParameters } from '../../App';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import ColorSchemeScreen from '../components/ColorSchemeScreen';
-import { ChevronDownIcon, UserIcon, MagnifyingGlassIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
+import { AdjustmentsHorizontalIcon, ArrowRightIcon, ChevronDownIcon, CurrencyDollarIcon, MagnifyingGlassIcon, TagIcon, UserIcon } from 'react-native-heroicons/outline';
 import tw from 'twrnc';
 import { ImageSourcePropType } from 'react-native/Libraries/Image/Image';
-import { ArrowRightIcon, MapPinIcon } from 'react-native-heroicons/outline';
 import { StarIcon } from 'react-native-heroicons/solid';
 import { TailwindProps } from '../types';
 import cn from 'classnames';
+import { Category, createTables, getAllCategories, getAllRestaurants } from '../utils/dataLoader';
+import Spinner from 'react-native-loading-spinner-overlay';
 
-function Header() {
+function BannerRow() {
   return (
     <View className={`mx-4 flex-row items-center space-x-2 pb-3`}>
       <Image source={{ uri: 'https://links.papareact.com/wru' }} className={`h-7 w-7 rounded-full bg-gray-300 p-4`} />
@@ -73,22 +74,17 @@ type FeaturedCardProps = {
   title: string;
   imageSource: ImageSourcePropType;
   rating: number;
-  address: string;
-  long: number;
-  lat: number;
-  genre: string /*TODO: 타입수정*/;
-  description: string;
-  dishes?: {}[];
+  categories: Category[];
 };
 type FeaturedRowProps = { title: string; description?: string; items: FeaturedCardProps[] };
 
 function FeaturedRows({ rows }: { rows: FeaturedRowProps[] }) {
-  function Card({ title, imageSource, address, rating }: FeaturedCardProps) {
+  function Card({ title, imageSource, categories, rating, priceTag }: FeaturedCardProps) {
     return (
       <TouchableOpacity className={`mr-3 rounded bg-white shadow-sm`} activeOpacity={0.5}>
         <Image source={imageSource} className={`h-36 w-64 rounded`} />
         <View className={`w-full px-2 py-2 pb-5`}>
-          <Text className={`pt-1 text-xl font-bold capitalize text-gray-800`} numberOfLines={1}>
+          <Text className={`w-52 pt-1 text-xl font-bold capitalize text-gray-800`} numberOfLines={1}>
             {title}
           </Text>
           <View className={`flex-row items-center`}>
@@ -99,9 +95,15 @@ function FeaturedRows({ rows }: { rows: FeaturedRowProps[] }) {
             <Text className={`text-gray-700`}> · Offers</Text>
           </View>
           <View className={`flex-row items-center`}>
-            <MapPinIcon color={'gray'} size={22} opacity={0.5} />
+            <TagIcon color={'gray'} size={22} opacity={0.5} />
             <Text className={`w-52 pl-2 text-gray-700`} numberOfLines={1}>
-              NearBy · {address}
+              Categories · {categories.map(category => category).join(', ')}
+            </Text>
+          </View>
+          <View className={`flex-row items-center`}>
+            <CurrencyDollarIcon color={'gray'} size={22} opacity={0.5} />
+            <Text className={`w-52 pl-2 text-gray-700`} numberOfLines={1}>
+              Price · {priceTag}
             </Text>
           </View>
         </View>
@@ -133,54 +135,65 @@ function FeaturedRows({ rows }: { rows: FeaturedRowProps[] }) {
   return <>{rows.map((row, index) => (row.items.length ? <Row key={index} {...row} /> : <React.Fragment key={index} />))}</>;
 }
 
+function Header2({ className, ...props }: TailwindProps) {
+  return (
+    <View className={cn(className, `bg-white pt-2`)} {...props}>
+      <View>
+        <BannerRow />
+        <SearchBar />
+      </View>
+    </View>
+  );
+}
+
 function Body({ className, ...props }: TailwindProps) {
-  const testRestaurantDatum: FeaturedCardProps = {
-    title: 'pizza',
-    imageSource: { uri: 'https://links.papareact.com/2io' },
-    address: 'Clink Street',
-    rating: 4.876,
-    genre: 'Japanese',
-    lat: 20,
-    long: 0,
-    description: 'this is a restaurant.',
+  const [categories, setCategories] = useState<CategoryProps[]>([]);
+  const [restaurants, setRestaurants] = useState<FeaturedCardProps[]>([]);
+
+  const setup = async () => {
+    await createTables();
+    setCategories(
+      (await getAllCategories()).map(category => ({
+        title: category,
+        imageSource: { uri: `https://source.unsplash.com/300x300/?food,dish,cuisine,${category}` },
+      })),
+    );
+    setRestaurants(
+      (await getAllRestaurants()).map(restaurant => ({
+        title: restaurant.name,
+        imageSource: { uri: restaurant.heroImgUrl },
+        rating: restaurant.averageRating || 0,
+        categories: restaurant.categories || [],
+        priceTag: restaurant.priceTag || '$',
+      })),
+    );
   };
 
-  return (
+  useEffect(() => {
+    setup();
+  }, []);
+
+  return !categories.length || !restaurants.length ? (
+    <Spinner visible={true} textContent={'Data Fetching...'} textStyle={{ color: '#FFF' }} />
+  ) : (
     <ScrollView {...props} className={cn(className, `bg-gray-100 px-2`)} contentContainerStyle={tw`pb-10`}>
-      <Categories
-        categories={[
-          { title: 'pizza', imageSource: { uri: 'https://links.papareact.com/2io' } },
-          { title: 'pizza', imageSource: { uri: 'https://links.papareact.com/2io' } },
-          { title: 'pizza', imageSource: { uri: 'https://links.papareact.com/2io' } },
-          { title: 'pizza', imageSource: { uri: 'https://links.papareact.com/2io' } },
-          { title: 'pizza', imageSource: { uri: 'https://links.papareact.com/2io' } },
-          { title: 'pizza', imageSource: { uri: 'https://links.papareact.com/2io' } },
-          { title: 'pizza', imageSource: { uri: 'https://links.papareact.com/2io' } },
-          { title: 'pizza', imageSource: { uri: 'https://links.papareact.com/2io' } },
-          { title: 'pizza', imageSource: { uri: 'https://links.papareact.com/2io' } },
-          { title: 'pizza', imageSource: { uri: 'https://links.papareact.com/2io' } },
-        ]}
-      />
+      <Categories categories={categories} />
       <FeaturedRows
         rows={[
           {
-            title: 'Test',
-            items: Array.from({ length: 0 }).map(() => testRestaurantDatum),
-          },
-          {
             title: 'Offers near you!',
             description: 'Why not support your local restaurant tonight!',
-            items: Array.from({ length: 1 }).map(() => testRestaurantDatum),
+            items: [...restaurants].sort(() => 0.5 - Math.random()).slice(0, 5),
           },
           {
             title: 'Featured',
             description: 'Paid placements from our partners',
-            items: Array.from({ length: 2 }).map(() => testRestaurantDatum),
+            items: [...restaurants].sort(() => 0.5 - Math.random()).slice(0, 5),
           },
           {
             title: 'Tasty Discounts',
             description: "Everyone's been enjoying these juicy discounts!",
-            items: Array.from({ length: 5 }).map(() => testRestaurantDatum),
+            items: [...restaurants].sort(() => 0.5 - Math.random()).slice(0, 5),
           },
         ]}
       />
@@ -195,12 +208,7 @@ export default function First({ navigation }: NativeStackScreenProps<NavigationP
 
   return (
     <ColorSchemeScreen className={`flex-1 flex-col`}>
-      <View className={`bg-white pt-2`}>
-        <View>
-          <Header />
-          <SearchBar />
-        </View>
-      </View>
+      <Header2 />
       <Body className={`flex-1`} />
     </ColorSchemeScreen>
   );
