@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NavigationParameters } from '../../App';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import ColorSchemeScreen from '../components/ColorSchemeScreen';
 import { AdjustmentsHorizontalIcon, ArrowRightIcon, ChevronDownIcon, CurrencyDollarIcon, MagnifyingGlassIcon, TagIcon, UserIcon } from 'react-native-heroicons/outline';
 import tw from 'twrnc';
@@ -71,17 +71,19 @@ function Categories({ categories }: { categories: CategoryProps[] }) {
 }
 
 type FeaturedCardProps = {
+  restaurantId: string;
   title: string;
   imageSource: ImageSourcePropType;
   rating: number;
   categories: Category[];
+  priceTag: string;
 };
 type FeaturedRowProps = { title: string; description?: string; items: FeaturedCardProps[] };
 
-function FeaturedRows({ rows }: { rows: FeaturedRowProps[] }) {
-  function Card({ title, imageSource, categories, rating, priceTag }: FeaturedCardProps) {
+function FeaturedRows({ navigation, rows }: { navigation: NativeStackNavigationProp<NavigationParameters, 'First'>; rows: FeaturedRowProps[] }) {
+  function Card({ restaurantId, title, imageSource, categories, rating, priceTag }: FeaturedCardProps) {
     return (
-      <TouchableOpacity className={`mr-3 rounded bg-white shadow-sm`} activeOpacity={0.5}>
+      <TouchableOpacity className={`mr-3 rounded bg-white shadow-sm`} activeOpacity={0.5} onPress={() => navigation.navigate('Restaurant', { id: restaurantId })}>
         <Image source={imageSource} className={`h-36 w-64 rounded`} />
         <View className={`w-full px-2 py-2 pb-5`}>
           <Text className={`w-52 pt-1 text-xl font-bold capitalize text-gray-800`} numberOfLines={1}>
@@ -146,7 +148,7 @@ function Header2({ className, ...props }: TailwindProps) {
   );
 }
 
-function Body({ className, ...props }: TailwindProps) {
+function Body({ className, navigation, ...props }: TailwindProps & { navigation: NativeStackNavigationProp<NavigationParameters, 'First'> }) {
   const [categories, setCategories] = useState<CategoryProps[]>([]);
   const [restaurants, setRestaurants] = useState<FeaturedCardProps[]>([]);
 
@@ -160,6 +162,7 @@ function Body({ className, ...props }: TailwindProps) {
     );
     setRestaurants(
       (await getAllRestaurants()).map(restaurant => ({
+        restaurantId: restaurant.restaurantId,
         title: restaurant.name,
         imageSource: { uri: restaurant.heroImgUrl },
         rating: restaurant.averageRating || 0,
@@ -179,6 +182,7 @@ function Body({ className, ...props }: TailwindProps) {
     <ScrollView {...props} className={cn(className, `bg-gray-100 px-2`)} contentContainerStyle={tw`pb-10`}>
       <Categories categories={categories} />
       <FeaturedRows
+        navigation={navigation}
         rows={[
           {
             title: 'Offers near you!',
@@ -207,9 +211,9 @@ export default function First({ navigation }: NativeStackScreenProps<NavigationP
   }, []);
 
   return (
-    <ColorSchemeScreen className={`flex-1 flex-col`}>
+    <ColorSchemeScreen>
       <Header2 />
-      <Body className={`flex-1`} />
+      <Body className={`flex-1`} navigation={navigation} />
     </ColorSchemeScreen>
   );
 }

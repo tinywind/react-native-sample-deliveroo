@@ -48,7 +48,7 @@ export type Restaurant = {
   photoUrlLarge?: string;
   photoUrlOriginal?: string;
   displayHours?: string;
-  categories?: string[];
+  categories?: Category[];
   dishes?: Dish[];
 };
 export type Dish = {
@@ -153,6 +153,60 @@ export const getAllRestaurants = async (): Promise<Restaurant[]> => {
             getAllRestaurants().then(resolve).catch(reject);
           }, 100);
         });
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
+
+export const getRestaurant = async (restaurantId: string): Promise<Restaurant> => {
+  const SQL = `SELECT * FROM restaurant WHERE restaurant_id = ?`;
+  return new Promise((resolve, reject) => {
+    try {
+      database.transaction(async tx => {
+        tx.executeSql(SQL, [restaurantId], async (_, { rows: { _array } }) => {
+          if (!_array.length) return reject(new Error('No restaurant found'));
+
+          const restaurant: Restaurant = shortArray(_array)[0];
+          if (restaurant.address) {
+            restaurant.dishes = await getDishesByRestaurantId(restaurantId);
+            restaurant.categories = await getCategoriesByRestaurantId(restaurantId);
+            return resolve(restaurant);
+          }
+
+          setTimeout(async () => {
+            const restaurantResponse = (await getRestaurantDetails(restaurantId)).data.data as any;
+            await updateRestaurantDetail(restaurantId, restaurantResponse);
+            getRestaurant(restaurantId).then(resolve).catch(reject);
+          }, 100);
+        });
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
+
+const getCategoriesByRestaurantId = async (restaurantId: string): Promise<Category[]> => {
+  const SQL = `SELECT * FROM restaurant_x_category WHERE restaurant_id = ?`;
+  return new Promise((resolve, reject) => {
+    try {
+      database.transaction(async tx => {
+        tx.executeSql(SQL, [restaurantId], async (_, { rows: { _array } }) => resolve(shortArray(_array).map(({ category }) => category)));
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
+
+const getDishesByRestaurantId = async (restaurantId: string): Promise<Dish[]> => {
+  const SQL = `SELECT * FROM dish WHERE restaurant_id = ?`;
+  return new Promise((resolve, reject) => {
+    try {
+      database.transaction(async tx => {
+        tx.executeSql(SQL, [restaurantId], async (_, { rows: { _array } }) => resolve(shortArray(_array)));
       });
     } catch (e) {
       reject(e);
@@ -471,12 +525,12 @@ const updateRestaurantDetail = async (restaurantId: string, restaurant: any) => 
           restaurant.location.address,
           restaurant.location.web_url,
           restaurant.location.website,
-          restaurant.location.photo?.images?.thumbnail,
-          restaurant.location.photo?.images?.small,
-          restaurant.location.photo?.images?.medium,
-          restaurant.location.photo?.images?.large,
-          restaurant.location.photo?.images?.original,
-          restaurant.location.display_hours,
+          JSON.stringify(restaurant.location.photo?.images?.thumbnail?.url),
+          JSON.stringify(restaurant.location.photo?.images?.small?.url),
+          JSON.stringify(restaurant.location.photo?.images?.medium?.url),
+          JSON.stringify(restaurant.location.photo?.images?.large?.url),
+          JSON.stringify(restaurant.location.photo?.images?.original?.url),
+          JSON.stringify(restaurant.location.display_hours),
           restaurantId,
         ];
         console.log('updating restaurant:', SQL, params);
@@ -504,7 +558,7 @@ const insertDish = async (restaurantId: string, restaurant: any, dish: any) => {
           // random value in restaurant.location.price_level('$$$$')
           Math.floor(Math.random() * restaurant.location.price_level.length) + 1,
           // random food image url
-          `https://source.unsplash.com/1600x900/?food,dish,cuisine,${dish.name}`,
+          `https://source.unsplash.com/300x300/?food,dish,cuisine,${dish.name}`,
         ];
         console.log('inserting dish:', SQL, params);
         await tx.executeSql(SQL, params);
