@@ -52,7 +52,7 @@ export type Restaurant = {
   dishes?: Dish[];
 };
 export type Dish = {
-  id: string;
+  id: number;
   restaurantId: string;
   name: string;
   price?: number;

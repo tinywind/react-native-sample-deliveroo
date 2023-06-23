@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import ColorSchemeScreen from '../components/ColorSchemeScreen';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavigationParameters } from '../../App';
@@ -9,9 +9,49 @@ import { ArrowLeftIcon, ChevronRightIcon, MapPinIcon, QuestionMarkCircleIcon } f
 import { MinusCircleIcon, PlusCircleIcon, StarIcon } from 'react-native-heroicons/solid';
 import Currency from 'react-currency-formatter';
 import cn from 'classnames';
+import { useAppDispatch, useAppSelector } from '../contexts/store/store';
+import { changeDishQuantity, changeRestaurantId } from '../contexts/store/basketSlice';
 
-function DishRow({ dish }: { dish: Dish }) {
+function DishRow({ restaurantId, dish }: { restaurantId: string; dish: Dish }) {
+  const basket = useAppSelector(state => state.basket);
+  const dispatch = useAppDispatch();
   const [pressed, setPressed] = useState(false);
+  const [quantity, setQuantity] = useState(0);
+
+  useEffect(() => {
+    if (basket.restaurantId !== restaurantId) return;
+    if (basket.dishes[dish.id]) setPressed(true);
+    setQuantity(basket.dishes[dish.id] || 0);
+  }, [basket]);
+
+  const checkNewRestaurant = () =>
+    new Promise((resolve, reject) => {
+      if (basket.restaurantId && restaurantId !== basket.restaurantId) {
+        Alert.alert('Notice', 'You can only order from one restaurant at a time. remove all dishes from the basket to order from another restaurant.', [
+          { text: 'Cancel', style: 'cancel', onPress: () => reject(void 0) },
+          {
+            text: 'OK',
+            style: 'default',
+            onPress: () => {
+              dispatch(changeRestaurantId({ restaurantId }));
+              resolve(void 0);
+            },
+          },
+        ]);
+      } else {
+        if (!basket.restaurantId) dispatch(changeRestaurantId({ restaurantId }));
+        resolve(void 0);
+      }
+    });
+
+  const addDishToBasket = async (dishId: number) => {
+    await checkNewRestaurant();
+    dispatch(changeDishQuantity({ dishId, quantity: quantity + 1 }));
+  };
+  const removeDishFromBasket = async (dishId: number) => {
+    await checkNewRestaurant();
+    dispatch(changeDishQuantity({ dishId, quantity: quantity - 1 }));
+  };
 
   return (
     <View className={cn(pressed && `border-y`, `border-gray-300 p-4`)}>
@@ -29,11 +69,11 @@ function DishRow({ dish }: { dish: Dish }) {
         <View className={`bg-white`}>
           <View className={`flex-row items-center space-x-2`}>
             <TouchableOpacity>
-              <MinusCircleIcon size={40} color={`#0CB`} opacity={0.5} />
+              <MinusCircleIcon size={40} color={`#0CB`} opacity={0.5} onPress={() => removeDishFromBasket(dish.id)} />
             </TouchableOpacity>
-            <Text>0</Text>
+            <Text>{quantity}</Text>
             <TouchableOpacity>
-              <PlusCircleIcon size={40} color={`#0CB`} opacity={0.5} />
+              <PlusCircleIcon size={40} color={`#0CB`} opacity={0.5} onPress={() => addDishToBasket(dish.id)} />
             </TouchableOpacity>
           </View>
         </View>
@@ -93,7 +133,7 @@ export default function Restaurant({ navigation, route }: NativeStackScreenProps
           <View>
             <Text className={`bg-gray-100 px-4 py-6 text-xl font-bold`}>Menu</Text>
             {restaurant.dishes?.map((dish, index) => (
-              <DishRow key={index} dish={dish} />
+              <DishRow key={index} restaurantId={restaurant.restaurantId} dish={dish} />
             ))}
           </View>
         </View>

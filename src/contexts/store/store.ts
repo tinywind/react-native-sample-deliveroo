@@ -2,6 +2,7 @@ import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { createLogger } from 'redux-logger';
 import userReducer from './userSlice';
+import basketReducer from './basketSlice';
 // @ts-ignore
 import { DEVELOPMENT } from '@env';
 
@@ -9,6 +10,7 @@ const logger = createLogger();
 
 const rootReducer = combineReducers({
   user: userReducer,
+  basket: basketReducer,
 });
 
 const initialState = {};
