@@ -1,6 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-export type BasketProps = { restaurantId?: string; dishes: { dishId: number; dishPrice: number; quantity: number }[] };
+export type DishProps = { dishId: number; dishPrice: number; quantity: number };
+export type BasketProps = { restaurantId?: string; dishes: DishProps[] };
 
 const basketSlice = createSlice({
   name: 'basket',

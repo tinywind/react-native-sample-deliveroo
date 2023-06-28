@@ -1,37 +1,95 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import ColorSchemeScreen from '../components/ColorSchemeScreen';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavigationParameters } from '../../App';
-import { Dish, getRestaurant, Restaurant as RestaurantType } from '../utils/dataLoader';
+import { Dish, getRestaurant, getDish, Restaurant as RestaurantType } from '../utils/dataLoader';
 import Spinner from 'react-native-loading-spinner-overlay';
 import { ArrowLeftIcon, ChevronRightIcon, MapPinIcon, QuestionMarkCircleIcon } from 'react-native-heroicons/outline';
 import { MinusCircleIcon, PlusCircleIcon, StarIcon } from 'react-native-heroicons/solid';
 import Currency from 'react-currency-formatter';
 import cn from 'classnames';
 import { useAppDispatch, useAppSelector } from '../contexts/store/store';
-import { changeDishQuantity, changeRestaurantId } from '../contexts/store/basketSlice';
+import { changeDishQuantity, changeRestaurantId, DishProps } from '../contexts/store/basketSlice';
 import { useNavigation } from '@react-navigation/native';
+
+const OrderSheetModal = ({ onRequestClose }: { onRequestClose: () => void }) => {
+  const dishes = useAppSelector(state => state.basket).dishes;
+  const [dishMap, setDishMap] = useState<{ [dishId: number]: Dish }>({});
+  useEffect(() => {
+    dishes.forEach(async ({ dishId }) => {
+      const record = await getDish(dishId);
+      setDishMap(prev => ({ ...prev, [dishId]: record }));
+    });
+  }, []);
+
+  return (
+    <Modal visible={true} animationType='fade' onRequestClose={onRequestClose} transparent={true}>
+      <View className={`flex-1 bg-white`}>
+        <View className={`flex-row items-center justify-between border-b border-gray-200 px-5 py-3`}>
+          <TouchableOpacity onPress={onRequestClose}>
+            <ArrowLeftIcon size={25} color={`#0CB`} />
+          </TouchableOpacity>
+          <Text className={`text-lg font-bold`}>Order Sheet</Text>
+          <View className={`w-6`} />
+        </View>
+        <ScrollView className={`flex-1`}>
+          <View className={`flex-row items-center justify-between border-b border-gray-200 px-5 py-3`}>
+            <Text className={`text-lg font-bold`}>Photo</Text>
+            <Text className={`w-1/2 bg-amber-100 text-lg font-bold`}>Dish Name</Text>
+            <Text className={`w-1/6 bg-amber-100 text-right text-lg font-bold`}>Count</Text>
+          </View>
+          {Object.values(dishes).map((dish, index) => (
+            <View key={index} className={`flex-row items-center justify-between border-b border-gray-200 px-5 py-3`}>
+              <Image source={{ uri: dishMap[dish.dishId]?.photoUrl }} style={{ width: 50, height: 50 }} className={`rounded-lg`} />
+              <Text className={`w-1/2 bg-amber-100 text-lg`}>{dishMap[dish.dishId]?.name}</Text>
+              <Text className={`w-1/6 bg-amber-100 text-right text-lg`}>{dish.quantity}</Text>
+            </View>
+          ))}
+        </ScrollView>
+        <View className={`flex-row items-center justify-between border-t border-gray-200 px-5 py-3`}>
+          <Text className={`text-lg font-bold`}>Total</Text>
+          <Text className={`text-lg font-bold`}>
+            <Currency quantity={Object.values(dishes).reduce((acc, curr) => acc + curr.quantity * curr.dishPrice, 0)} currency={'USD'} />
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() =>
+            Alert.alert('Order Placed', 'Your order has been placed successfully!', [
+              {
+                text: 'OK',
+                onPress: () => {
+                  // TODO: order
+                },
+              },
+            ])
+          }
+          className={`flex-row items-center justify-center bg-[#0CB] py-3`}>
+          <Text className={`text-lg font-bold text-white`}>Place Order</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+};
 
 const BasketIcon = () => {
   const dishes = useAppSelector(state => state.basket).dishes;
   const navigation = useNavigation();
-
-  useEffect(() => {
-    console.log('dishes', dishes);
-    console.log(Object.values(dishes).reduce((acc, curr) => acc + curr.quantity * curr.dishPrice, 0));
-  }, [dishes]);
+  const [showingOrderSheetModal, setShowingOrderSheetModal] = useState(false);
 
   return (
-    <View className={`absolute bottom-10 z-50 w-full`}>
-      <TouchableOpacity className={`mx-5 flex-row rounded-lg bg-[#0CB] p-4`}>
-        <Text className={`bg-[#01A296] px-2 text-lg font-extrabold text-white`}>{Object.values(dishes).reduce((acc, curr) => acc + curr.quantity, 0)}</Text>
-        <Text className={`flex-1 text-center text-lg font-extrabold text-white`}>View Basket</Text>
-        <Text className={`text-lg text-white `}>
-          <Currency quantity={Object.values(dishes).reduce((acc, curr) => acc + curr.quantity * curr.dishPrice, 0)} currency={'USD'} />
-        </Text>
-      </TouchableOpacity>
-    </View>
+    <>
+      {showingOrderSheetModal && <OrderSheetModal dishes={dishes} onRequestClose={() => setShowingOrderSheetModal(false)} />}
+      <View className={`absolute bottom-10 z-50 w-full`}>
+        <TouchableOpacity className={`mx-5 flex-row rounded-lg bg-[#0CB] p-4`} disabled={!dishes.length} onPress={() => setShowingOrderSheetModal(true)}>
+          <Text className={`bg-[#01A296] px-2 text-lg font-extrabold text-white`}>{Object.values(dishes).reduce((acc, curr) => acc + curr.quantity, 0)}</Text>
+          <Text className={`flex-1 text-center text-lg font-extrabold text-white`}>View Basket</Text>
+          <Text className={`text-lg text-white `}>
+            <Currency quantity={Object.values(dishes).reduce((acc, curr) => acc + curr.quantity * curr.dishPrice, 0)} currency={'USD'} />
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </>
   );
 };
 

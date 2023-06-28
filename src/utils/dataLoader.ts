@@ -69,51 +69,39 @@ export const createTables = async () => {
 
 export const getAllLocations = async (): Promise<Location[]> => {
   const SQL = `SELECT * FROM location`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        tx.executeSql(SQL, [], async (_, { rows: { _array } }) => {
-          if (_array.length) return resolve(shortArray(_array));
+  return executeSql((tx, resolve, reject) => {
+    tx.executeSql(SQL, [], async (_, { rows: { _array } }) => {
+      if (_array.length) return resolve(shortArray(_array));
 
-          setTimeout(async () => {
-            const response = await searchLocation();
-            const locations = response.data.data as any[];
-            for (const location of locations) await insertLocation(location);
+      setTimeout(async () => {
+        const response = await searchLocation();
+        const locations = response.data.data as any[];
+        for (const location of locations) await insertLocation(location);
 
-            getAllLocations().then(resolve).catch(reject);
-          }, 100);
-        });
-      });
-    } catch (e) {
-      reject(e);
-    }
+        getAllLocations().then(resolve).catch(reject);
+      }, 100);
+    });
   });
 };
 
 export const getAllCategories = async (): Promise<Category[]> => {
   const SQL = `SELECT * FROM category`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        tx.executeSql(SQL, [], async (_, { rows: { _array } }) => {
-          if (_array.length) return resolve(_array.sort(e => e.name).map(({ name }) => name));
+  return executeSql((tx, resolve, reject) => {
+    tx.executeSql(SQL, [], async (_, { rows: { _array } }) => {
+      if (_array.length) return resolve(_array.sort(e => e.name).map(({ name }) => name));
 
-          setTimeout(async () => {
-            const locations = await getAllLocations();
-            if (!locations.length) return reject(new Error('No location found'));
-            const targetLocationId = locations[0].locationId;
+      setTimeout(async () => {
+        const locations = await getAllLocations();
+        if (!locations.length) return reject(new Error('No location found'));
+        const targetLocationId = locations[0].locationId;
 
-            const response = await searchRestaurants(targetLocationId, 1);
-            const restaurants = response.data.data.data as any[];
-            for (const restaurant of restaurants) await insertRestaurant(restaurant, targetLocationId);
+        const response = await searchRestaurants(targetLocationId, 1);
+        const restaurants = response.data.data.data as any[];
+        for (const restaurant of restaurants) await insertRestaurant(restaurant, targetLocationId);
 
-            getAllCategories().then(resolve).catch(reject);
-          }, 100);
-        });
-      });
-    } catch (e) {
-      reject(e);
-    }
+        getAllCategories().then(resolve).catch(reject);
+      }, 100);
+    });
   });
 };
 
@@ -132,95 +120,85 @@ export const getAllRestaurants = async (): Promise<Restaurant[]> => {
   };
 
   const SQL = `SELECT * FROM restaurant`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        tx.executeSql(SQL, [], async (_, { rows: { _array } }) => {
-          if (_array.length) {
-            const restaurants: Restaurant[] = shortArray(_array);
-            await setCategories(restaurants);
-            return resolve(restaurants);
-          }
+  return executeSql((tx, resolve, reject) => {
+    tx.executeSql(SQL, [], async (_, { rows: { _array } }) => {
+      if (_array.length) {
+        const restaurants: Restaurant[] = shortArray(_array);
+        await setCategories(restaurants);
+        return resolve(restaurants);
+      }
 
-          setTimeout(async () => {
-            const locations = await getAllLocations();
-            if (!locations.length) return reject(new Error('No location found'));
+      setTimeout(async () => {
+        const locations = await getAllLocations();
+        if (!locations.length) return reject(new Error('No location found'));
 
-            const targetLocationId = locations[0].locationId;
-            const restaurants = (await searchRestaurants(targetLocationId, 1)).data.data.data as any[];
-            for (const restaurant of restaurants) await insertRestaurant(restaurant, targetLocationId);
+        const targetLocationId = locations[0].locationId;
+        const restaurants = (await searchRestaurants(targetLocationId, 1)).data.data.data as any[];
+        for (const restaurant of restaurants) await insertRestaurant(restaurant, targetLocationId);
 
-            getAllRestaurants().then(resolve).catch(reject);
-          }, 100);
-        });
-      });
-    } catch (e) {
-      reject(e);
-    }
+        getAllRestaurants().then(resolve).catch(reject);
+      }, 100);
+    });
   });
 };
 
 export const getRestaurant = async (restaurantId: string): Promise<Restaurant> => {
   const SQL = `SELECT * FROM restaurant WHERE restaurant_id = ?`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        tx.executeSql(SQL, [restaurantId], async (_, { rows: { _array } }) => {
-          if (!_array.length) return reject(new Error('No restaurant found'));
+  return executeSql((tx, resolve, reject) => {
+    tx.executeSql(SQL, [restaurantId], async (_, { rows: { _array } }) => {
+      if (!_array.length) return reject(new Error('No restaurant found'));
 
-          const restaurant: Restaurant = shortArray(_array)[0];
-          if (restaurant.address) {
-            restaurant.dishes = await getDishesByRestaurantId(restaurantId);
-            restaurant.categories = await getCategoriesByRestaurantId(restaurantId);
-            return resolve(restaurant);
-          }
+      const restaurant: Restaurant = shortArray(_array)[0];
+      if (restaurant.address) {
+        restaurant.dishes = await getDishesByRestaurantId(restaurantId);
+        restaurant.categories = await getCategoriesByRestaurantId(restaurantId);
+        return resolve(restaurant);
+      }
 
-          setTimeout(async () => {
-            const restaurantResponse = (await getRestaurantDetails(restaurantId)).data.data as any;
-            await updateRestaurantDetail(restaurantId, restaurantResponse);
-            getRestaurant(restaurantId).then(resolve).catch(reject);
-          }, 100);
-        });
-      });
-    } catch (e) {
-      reject(e);
-    }
+      setTimeout(async () => {
+        const restaurantResponse = (await getRestaurantDetails(restaurantId)).data.data as any;
+        await updateRestaurantDetail(restaurantId, restaurantResponse);
+        getRestaurant(restaurantId).then(resolve).catch(reject);
+      }, 100);
+    });
+  });
+};
+
+export const getDish = async (dishId: number): Promise<Dish> => {
+  const SQL = `SELECT * FROM dish WHERE id = ?`;
+  return executeSql((tx, resolve, reject) => {
+    tx.executeSql(SQL, [dishId], async (_, { rows: { _array } }) => {
+      if (!_array.length) return reject(new Error('No restaurant found'));
+      return resolve(shortArray(_array)[0]);
+    });
   });
 };
 
 const getCategoriesByRestaurantId = async (restaurantId: string): Promise<Category[]> => {
   const SQL = `SELECT * FROM restaurant_x_category WHERE restaurant_id = ?`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        tx.executeSql(SQL, [restaurantId], async (_, { rows: { _array } }) => resolve(shortArray(_array).map(({ category }) => category)));
-      });
-    } catch (e) {
-      reject(e);
-    }
+  return executeSql((tx, resolve, reject) => {
+    tx.executeSql(SQL, [restaurantId], async (_, { rows: { _array } }) => resolve(shortArray(_array).map(({ category }) => category)));
   });
 };
 
 const getDishesByRestaurantId = async (restaurantId: string): Promise<Dish[]> => {
   const SQL = `SELECT * FROM dish WHERE restaurant_id = ?`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        tx.executeSql(SQL, [restaurantId], async (_, { rows: { _array } }) => resolve(shortArray(_array)));
-      });
-    } catch (e) {
-      reject(e);
-    }
+  return executeSql((tx, resolve, reject) => {
+    tx.executeSql(SQL, [restaurantId], async (_, { rows: { _array } }) => resolve(shortArray(_array)));
   });
 };
 
 const getAllRestaurantXCategory = async (): Promise<{ restaurantId: string; category: string }[]> => {
   const SQL = `SELECT * FROM restaurant_x_category`;
+  return executeSql((tx, resolve, reject) => {
+    tx.executeSql(SQL, [], async (_, { rows: { _array } }) => resolve(shortArray(_array)));
+  });
+};
+
+const executeSql = async <T>(func: (tx: SQLite.SQLTransaction, resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => unknown): Promise<T> => {
   return new Promise((resolve, reject) => {
     try {
-      database.transaction(async tx => {
-        tx.executeSql(SQL, [], async (_, { rows: { _array } }) => resolve(shortArray(_array)));
-      });
+      database.transaction(async transaction => func(transaction, resolve, reject));
     } catch (e) {
       reject(e);
     }
@@ -396,177 +374,129 @@ const DISH_TABLE_DDL = `
 `;
 
 const createTable = async (ddl: string) =>
-  new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        await tx.executeSql(ddl);
-        resolve(void 0);
-      });
-    } catch (e) {
-      reject(e);
-    }
+  executeSql(async (tx, resolve, reject) => {
+    await tx.executeSql(ddl);
+    resolve(void 0);
   });
 
 const insertCategory = async (category: string) => {
   const SQL = `INSERT OR IGNORE INTO category (name) VALUES (?)`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        await tx.executeSql(SQL, [category]);
-        resolve(void 0);
-      });
-    } catch (e) {
-      reject(e);
-    }
+  return executeSql(async (tx, resolve, reject) => {
+    await tx.executeSql(SQL, [category]);
+    resolve(void 0);
   });
 };
 
 const insertLocation = async (location: any) => {
   const SQL = `INSERT OR IGNORE INTO location ( location_id, document_id, property_id, localized_name, localized_additional_names, place_type, latitude, longitude, is_geo, thumbnail_url, thumbnail_max_width, thumbnail_max_height) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        const params = [
-          location.locationId,
-          location.documentId,
-          location.propertyId,
-          location.localizedName,
-          JSON.stringify(location.localizedAdditionalNames),
-          location.placeType,
-          location.latitude,
-          location.longitude,
-          location.isGeo,
-          location.thumbnail.photoSizeDynamic.urlTemplate,
-          location.thumbnail.photoSizeDynamic.maxWidth,
-          location.thumbnail.photoSizeDynamic.maxHeight,
-        ];
-        console.log('inserting location:', SQL, params);
-        await tx.executeSql(SQL, params);
+  return executeSql(async (tx, resolve, reject) => {
+    const params = [
+      location.locationId,
+      location.documentId,
+      location.propertyId,
+      location.localizedName,
+      JSON.stringify(location.localizedAdditionalNames),
+      location.placeType,
+      location.latitude,
+      location.longitude,
+      location.isGeo,
+      location.thumbnail.photoSizeDynamic.urlTemplate,
+      location.thumbnail.photoSizeDynamic.maxWidth,
+      location.thumbnail.photoSizeDynamic.maxHeight,
+    ];
+    console.log('inserting location:', SQL, params);
+    await tx.executeSql(SQL, params);
 
-        resolve(void 0);
-      });
-    } catch (e) {
-      reject(e);
-    }
+    resolve(void 0);
   });
 };
 
 const insertRestaurant = async (restaurant: any, locationId: number) => {
-  const SQL = `INSERT OR IGNORE INTO restaurant ( restaurant_id, location_id, name, hero_img_url, hero_img_raw_height, hero_img_raw_width, average_rating, price_tag ) VALUES (?,?,?,?,?,?,?,?)`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(
-        async tx => {
-          const params = [
-            restaurant.restaurantsId,
-            locationId,
-            restaurant.name,
-            restaurant.heroImgUrl,
-            restaurant.heroImgRawHeight,
-            restaurant.heroImgRawWidth,
-            restaurant.averageRating,
-            restaurant.priceTag,
-          ];
-          console.log('inserting restaurant:', SQL, params);
-          await tx.executeSql(SQL, params);
+  const SQL = `INSERT OR IGNORE INTO restaurant (restaurant_id, location_id, name, hero_img_url, hero_img_raw_height, hero_img_raw_width, average_rating, price_tag) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  return executeSql(async (tx, resolve, reject) => {
+    const params = [
+      restaurant.restaurantsId,
+      locationId,
+      restaurant.name,
+      restaurant.heroImgUrl,
+      restaurant.heroImgRawHeight,
+      restaurant.heroImgRawWidth,
+      restaurant.averageRating,
+      restaurant.priceTag,
+    ];
+    console.log('inserting restaurant:', SQL, params);
+    await tx.executeSql(SQL, params);
 
-          const categories = restaurant.establishmentTypeAndCuisineTags as string[] | undefined;
-          if (categories) {
-            for (const category of categories) {
-              await insertCategory(category);
-              await insertRestaurantXCategory(restaurant.restaurantsId, category);
-            }
-          }
-
-          resolve(void 0);
-        },
-        error => {
-          reject(error);
-        },
-      );
-    } catch (e) {
-      reject(e);
+    const categories = restaurant.establishmentTypeAndCuisineTags as string[] | undefined;
+    if (categories) {
+      for (const category of categories) {
+        await insertCategory(category);
+        await insertRestaurantXCategory(restaurant.restaurantsId, category);
+      }
     }
+    resolve(void 0);
   });
 };
 
 const insertRestaurantXCategory = async (restaurantId: string, category: string) => {
   const SQL = `INSERT OR IGNORE INTO restaurant_x_category (restaurant_id, category) VALUES (?,?)`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        const params = [restaurantId, category];
-        console.log('inserting restaurant_x_category:', SQL, params);
-        await tx.executeSql(SQL, params);
-        resolve(void 0);
-      });
-    } catch (e) {
-      reject(e);
-    }
+  return executeSql(async (tx, resolve, reject) => {
+    const params = [restaurantId, category];
+    console.log('inserting restaurant_x_category:', SQL, params);
+    await tx.executeSql(SQL, params);
+    resolve(void 0);
   });
 };
 
 const updateRestaurantDetail = async (restaurantId: string, restaurant: any) => {
   const SQL = `UPDATE restaurant SET latitude=?, longitude=?, timezone=?, location_string=?, doubleclick_zone=?, price_level=?, price=?, description=?, phone=?, email=?, address=?, web_url=?, website=?, photo_url_thumbnail=?, photo_url_small=?, photo_url_medium=?, photo_url_large=?, photo_url_original=?, display_hours=? WHERE restaurant_id=?`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        const params = [
-          restaurant.location.latitude,
-          restaurant.location.longitude,
-          restaurant.location.timezone,
-          restaurant.location.location_string,
-          restaurant.location.doubleclick_zone,
-          restaurant.location.price_level,
-          restaurant.location.price,
-          restaurant.location.description,
-          restaurant.location.phone,
-          restaurant.location.email,
-          restaurant.location.address,
-          restaurant.location.web_url,
-          restaurant.location.website,
-          JSON.stringify(restaurant.location.photo?.images?.thumbnail?.url),
-          JSON.stringify(restaurant.location.photo?.images?.small?.url),
-          JSON.stringify(restaurant.location.photo?.images?.medium?.url),
-          JSON.stringify(restaurant.location.photo?.images?.large?.url),
-          JSON.stringify(restaurant.location.photo?.images?.original?.url),
-          JSON.stringify(restaurant.location.display_hours),
-          restaurantId,
-        ];
-        console.log('updating restaurant:', SQL, params);
-        await tx.executeSql(SQL, params);
+  return executeSql(async (tx, resolve, reject) => {
+    const params = [
+      restaurant.location.latitude,
+      restaurant.location.longitude,
+      restaurant.location.timezone,
+      restaurant.location.location_string,
+      restaurant.location.doubleclick_zone,
+      restaurant.location.price_level,
+      restaurant.location.price,
+      restaurant.location.description,
+      restaurant.location.phone,
+      restaurant.location.email,
+      restaurant.location.address,
+      restaurant.location.web_url,
+      restaurant.location.website,
+      JSON.stringify(restaurant.location.photo?.images?.thumbnail?.url),
+      JSON.stringify(restaurant.location.photo?.images?.small?.url),
+      JSON.stringify(restaurant.location.photo?.images?.medium?.url),
+      JSON.stringify(restaurant.location.photo?.images?.large?.url),
+      JSON.stringify(restaurant.location.photo?.images?.original?.url),
+      JSON.stringify(restaurant.location.display_hours),
+      restaurantId,
+    ];
+    console.log('updating restaurant:', SQL, params);
+    await tx.executeSql(SQL, params);
 
-        const cuisines = restaurant.location.cuisine as { key: unknown; name: string }[];
-        for (const cuisine of cuisines) await insertDish(restaurantId, restaurant, cuisine);
+    const cuisines = restaurant.location.cuisine as { key: unknown; name: string }[];
+    for (const cuisine of cuisines) await insertDish(restaurantId, restaurant, cuisine);
 
-        resolve(void 0);
-      });
-    } catch (e) {
-      reject(e);
-    }
+    resolve(void 0);
   });
 };
 
 const insertDish = async (restaurantId: string, restaurant: any, dish: any) => {
   const SQL = `INSERT OR IGNORE INTO dish (restaurant_id, name, price, photo_url) VALUES (?,?,?,?)`;
-  return new Promise((resolve, reject) => {
-    try {
-      database.transaction(async tx => {
-        const params = [
-          restaurantId,
-          dish.name,
-          // random value in restaurant.location.price_level('$$$$')
-          Math.floor(Math.random() * restaurant.location.price_level.length) + 1,
-          // random food image url
-          `https://source.unsplash.com/300x300/?food,dish,cuisine,${dish.name}`,
-        ];
-        console.log('inserting dish:', SQL, params);
-        await tx.executeSql(SQL, params);
+  return executeSql(async (tx, resolve, reject) => {
+    const params = [
+      restaurantId,
+      dish.name,
+      // random value in restaurant.location.price_level('$$$$')
+      Math.floor(Math.random() * restaurant.location.price_level.length) + 1,
+      // random food image url
+      `https://source.unsplash.com/300x300/?food,dish,cuisine,${dish.name}`,
+    ];
+    console.log('inserting dish:', SQL, params);
+    await tx.executeSql(SQL, params);
 
-        resolve(void 0);
-      });
-    } catch (e) {
-      reject(e);
-    }
+    resolve(void 0);
   });
 };
