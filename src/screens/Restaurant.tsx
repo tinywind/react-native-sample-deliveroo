@@ -11,6 +11,29 @@ import Currency from 'react-currency-formatter';
 import cn from 'classnames';
 import { useAppDispatch, useAppSelector } from '../contexts/store/store';
 import { changeDishQuantity, changeRestaurantId } from '../contexts/store/basketSlice';
+import { useNavigation } from '@react-navigation/native';
+
+const BasketIcon = () => {
+  const dishes = useAppSelector(state => state.basket).dishes;
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    console.log('dishes', dishes);
+    console.log(Object.values(dishes).reduce((acc, curr) => acc + curr.quantity * curr.dishPrice, 0));
+  }, [dishes]);
+
+  return (
+    <View className={`absolute bottom-10 z-50 w-full`}>
+      <TouchableOpacity className={`mx-5 flex-row rounded-lg bg-[#0CB] p-4`}>
+        <Text className={`bg-[#01A296] px-2 text-lg font-extrabold text-white`}>{Object.values(dishes).reduce((acc, curr) => acc + curr.quantity, 0)}</Text>
+        <Text className={`flex-1 text-center text-lg font-extrabold text-white`}>View Basket</Text>
+        <Text className={`text-lg text-white `}>
+          <Currency quantity={Object.values(dishes).reduce((acc, curr) => acc + curr.quantity * curr.dishPrice, 0)} currency={'USD'} />
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 function DishRow({ restaurantId, dish }: { restaurantId: string; dish: Dish }) {
   const basket = useAppSelector(state => state.basket);
@@ -21,7 +44,7 @@ function DishRow({ restaurantId, dish }: { restaurantId: string; dish: Dish }) {
   useEffect(() => {
     if (basket.restaurantId !== restaurantId) return;
     if (basket.dishes[dish.id]) setPressed(true);
-    setQuantity(basket.dishes[dish.id] || 0);
+    setQuantity(basket.dishes.find(e => e.dishId === dish.id)?.quantity || 0);
   }, [basket]);
 
   const checkNewRestaurant = () =>
@@ -44,13 +67,13 @@ function DishRow({ restaurantId, dish }: { restaurantId: string; dish: Dish }) {
       }
     });
 
-  const addDishToBasket = async (dishId: number) => {
+  const addDishToBasket = async (dishId: number, dishPrice: number) => {
     await checkNewRestaurant();
-    dispatch(changeDishQuantity({ dishId, quantity: quantity + 1 }));
+    dispatch(changeDishQuantity({ dishId, dishPrice, quantity: quantity + 1 }));
   };
-  const removeDishFromBasket = async (dishId: number) => {
+  const removeDishFromBasket = async (dishId: number, dishPrice: number) => {
     await checkNewRestaurant();
-    dispatch(changeDishQuantity({ dishId, quantity: quantity - 1 }));
+    dispatch(changeDishQuantity({ dishId, dishPrice, quantity: quantity - 1 }));
   };
 
   return (
@@ -68,12 +91,12 @@ function DishRow({ restaurantId, dish }: { restaurantId: string; dish: Dish }) {
       {pressed && (
         <View className={`bg-white`}>
           <View className={`flex-row items-center space-x-2`}>
-            <TouchableOpacity>
-              <MinusCircleIcon size={40} color={`#0CB`} opacity={0.5} onPress={() => removeDishFromBasket(dish.id)} />
+            <TouchableOpacity disabled={!quantity} onPress={() => removeDishFromBasket(dish.id, dish?.price || 0)}>
+              <MinusCircleIcon size={40} color={`${quantity ? '#0CB' : 'gray'}`} opacity={0.5} />
             </TouchableOpacity>
             <Text>{quantity}</Text>
-            <TouchableOpacity>
-              <PlusCircleIcon size={40} color={`#0CB`} opacity={0.5} onPress={() => addDishToBasket(dish.id)} />
+            <TouchableOpacity onPress={() => addDishToBasket(dish.id, dish?.price || 0)}>
+              <PlusCircleIcon size={40} color={`#0CB`} opacity={0.5} />
             </TouchableOpacity>
           </View>
         </View>
@@ -136,8 +159,10 @@ export default function Restaurant({ navigation, route }: NativeStackScreenProps
               <DishRow key={index} restaurantId={restaurant.restaurantId} dish={dish} />
             ))}
           </View>
+          <View className={`pb-32`} />
         </View>
       </ScrollView>
+      <BasketIcon />
     </ColorSchemeScreen>
   );
 }
