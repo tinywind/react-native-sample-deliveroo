@@ -2,7 +2,8 @@
 1. `.env.template` to `.env`
 2. set RAPIDAPI_API_KEY, TARGET_CITY
    - can get RAPIDAPI_API_KEY from https://rapidapi.com/DataCrawler/api/tripadvisor16/
-3. 
+3. yarn
+4. yarn start
 
 ## TODO
 - [ ] fix web build error: `Module not found: Can't resolve '../Utilities/Platform'`
