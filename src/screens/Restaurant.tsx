@@ -2,18 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import ColorSchemeScreen from '../components/ColorSchemeScreen';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { NavigationParameters } from '../../App';
-import { Dish, getRestaurant, getDish, Restaurant as RestaurantType } from '../utils/dataLoader';
+import { Navigation, NavigationParameters } from '../../App';
+import { Dish, getDish, getRestaurant, Restaurant as RestaurantType } from '../utils/dataLoader';
 import Spinner from 'react-native-loading-spinner-overlay';
 import { ArrowLeftIcon, ChevronRightIcon, MapPinIcon, QuestionMarkCircleIcon } from 'react-native-heroicons/outline';
 import { MinusCircleIcon, PlusCircleIcon, StarIcon } from 'react-native-heroicons/solid';
 import Currency from 'react-currency-formatter';
 import cn from 'classnames';
 import { useAppDispatch, useAppSelector } from '../contexts/store/store';
-import { changeDishQuantity, changeRestaurantId, DishProps } from '../contexts/store/basketSlice';
+import { changeDishQuantity, changeRestaurantId } from '../contexts/store/basketSlice';
 import { useNavigation } from '@react-navigation/native';
 
 const OrderSheetModal = ({ onRequestClose }: { onRequestClose: () => void }) => {
+  const { navigate } = useNavigation<Navigation>();
+
+  const dispatch = useAppDispatch();
   const dishes = useAppSelector(state => state.basket).dishes;
   const [dishMap, setDishMap] = useState<{ [dishId: number]: Dish }>({});
   useEffect(() => {
@@ -36,16 +39,34 @@ const OrderSheetModal = ({ onRequestClose }: { onRequestClose: () => void }) => 
         <ScrollView className={`flex-1`}>
           <View className={`flex-row items-center justify-between border-b border-gray-200 px-5 py-3`}>
             <Text className={`text-lg font-bold`}>Photo</Text>
-            <Text className={`w-1/2 bg-amber-100 text-lg font-bold`}>Dish Name</Text>
+            <Text className={`w-1/2 bg-amber-100 pl-1 text-lg font-bold`}>Dish Name</Text>
+            <Text className={`w-6`} />
             <Text className={`w-1/6 bg-amber-100 text-right text-lg font-bold`}>Count</Text>
+            <Text className={`w-6`} />
           </View>
-          {Object.values(dishes).map((dish, index) => (
-            <View key={index} className={`flex-row items-center justify-between border-b border-gray-200 px-5 py-3`}>
-              <Image source={{ uri: dishMap[dish.dishId]?.photoUrl }} style={{ width: 50, height: 50 }} className={`rounded-lg`} />
-              <Text className={`w-1/2 bg-amber-100 text-lg`}>{dishMap[dish.dishId]?.name}</Text>
-              <Text className={`w-1/6 bg-amber-100 text-right text-lg`}>{dish.quantity}</Text>
-            </View>
-          ))}
+          {Object.values(dishes)
+            .filter(dish => dish.quantity > 0)
+            .map((dish, index) => (
+              <View key={index} className={`flex-row items-center justify-between border-b border-gray-200 px-5 py-3`}>
+                <Image source={{ uri: dishMap[dish.dishId]?.photoUrl }} style={{ width: 50, height: 50 }} className={`rounded-lg`} />
+                <Text className={`w-1/2 bg-amber-100 pl-1 text-lg`}>{dishMap[dish.dishId]?.name}</Text>
+                <TouchableOpacity
+                  className={`w-6`}
+                  onPress={() => {
+                    dispatch(changeDishQuantity({ dishId: dish.dishId, dishPrice: dish.dishPrice, quantity: dish.quantity - 1 }));
+                  }}>
+                  <MinusCircleIcon size={22} color={`grey`} />
+                </TouchableOpacity>
+                <Text className={`w-1/6 bg-amber-100 text-right text-lg`}>{dish.quantity}</Text>
+                <TouchableOpacity
+                  className={`w-6`}
+                  onPress={() => {
+                    dispatch(changeDishQuantity({ dishId: dish.dishId, dishPrice: dish.dishPrice, quantity: dish.quantity + 1 }));
+                  }}>
+                  <PlusCircleIcon size={22} color={`#0CB`} />
+                </TouchableOpacity>
+              </View>
+            ))}
         </ScrollView>
         <View className={`flex-row items-center justify-between border-t border-gray-200 px-5 py-3`}>
           <Text className={`text-lg font-bold`}>Total</Text>
@@ -53,18 +74,7 @@ const OrderSheetModal = ({ onRequestClose }: { onRequestClose: () => void }) => 
             <Currency quantity={Object.values(dishes).reduce((acc, curr) => acc + curr.quantity * curr.dishPrice, 0)} currency={'USD'} />
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() =>
-            Alert.alert('Order Placed', 'Your order has been placed successfully!', [
-              {
-                text: 'OK',
-                onPress: () => {
-                  // TODO: order
-                },
-              },
-            ])
-          }
-          className={`flex-row items-center justify-center bg-[#0CB] py-3`}>
+        <TouchableOpacity onPress={() => navigate('PreparingOrder')} className={`flex-row items-center justify-center bg-[#0CB] py-3`}>
           <Text className={`text-lg font-bold text-white`}>Place Order</Text>
         </TouchableOpacity>
       </View>
