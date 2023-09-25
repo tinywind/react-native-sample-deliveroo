@@ -63,7 +63,7 @@
     "prettier-plugin-nativewind": "^0.2.3",
     "react-native-dotenv": "^3.4.8",
     "react-test-renderer": "18.2.0",
-    "tailwindcss": "^3.3.2",
+    "tailwindcss": "3.3.2",
     "typescript": "4.9.4"
   },
   "jest": {
