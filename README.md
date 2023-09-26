@@ -17,4 +17,3 @@
 - https://heroicons.com/
 - https://docs.expo.dev/workflow/web/
 - https://rapidapi.com/DataCrawler/api/tripadvisor16/
-- 

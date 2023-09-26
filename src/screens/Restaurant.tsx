@@ -53,7 +53,13 @@ const OrderSheetModal = ({ onRequestClose }: { onRequestClose: () => void }) => 
                 <TouchableOpacity
                   className={`w-6`}
                   onPress={() => {
-                    dispatch(changeDishQuantity({ dishId: dish.dishId, dishPrice: dish.dishPrice, quantity: dish.quantity - 1 }));
+                    dispatch(
+                      changeDishQuantity({
+                        dishId: dish.dishId,
+                        dishPrice: dish.dishPrice,
+                        quantity: dish.quantity - 1,
+                      }),
+                    );
                   }}>
                   <MinusCircleIcon size={22} color={`grey`} />
                 </TouchableOpacity>
@@ -61,7 +67,13 @@ const OrderSheetModal = ({ onRequestClose }: { onRequestClose: () => void }) => 
                 <TouchableOpacity
                   className={`w-6`}
                   onPress={() => {
-                    dispatch(changeDishQuantity({ dishId: dish.dishId, dishPrice: dish.dishPrice, quantity: dish.quantity + 1 }));
+                    dispatch(
+                      changeDishQuantity({
+                        dishId: dish.dishId,
+                        dishPrice: dish.dishPrice,
+                        quantity: dish.quantity + 1,
+                      }),
+                    );
                   }}>
                   <PlusCircleIcon size={22} color={`#0CB`} />
                 </TouchableOpacity>

@@ -148,7 +148,13 @@ function Header2({ className, ...props }: TailwindProps) {
   );
 }
 
-function Body({ className, navigation, ...props }: TailwindProps & { navigation: NativeStackNavigationProp<NavigationParameters, 'First'> }) {
+function Body({
+  className,
+  navigation,
+  ...props
+}: TailwindProps & {
+  navigation: NativeStackNavigationProp<NavigationParameters, 'First'>;
+}) {
   const [categories, setCategories] = useState<CategoryProps[]>([]);
   const [restaurants, setRestaurants] = useState<FeaturedCardProps[]>([]);
 
